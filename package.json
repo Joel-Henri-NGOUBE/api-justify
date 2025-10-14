@@ -1,0 +1,39 @@
+{
+  "name": "api_justify",
+  "version": "1.0.0",
+  "description": "This is an API that permits you to have any text you want justified. You can try it now !!!",
+  "main": "dist/api.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/api.ts",
+    "build": "tsc",
+    "start": "node dist/api.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Joel-Henri-NGOUBE/api-justify.git"
+  },
+  "keywords": [
+    "api",
+    "justify",
+    "node",
+    "typescript",
+    "authentication"
+  ],
+  "author": "Joel-Henri-NGOUBE",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Joel-Henri-NGOUBE/api-justify/issues"
+  },
+  "homepage": "https://github.com/Joel-Henri-NGOUBE/api-justify#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
