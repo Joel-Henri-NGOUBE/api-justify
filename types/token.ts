@@ -9,7 +9,7 @@ export interface TokenDataInterface extends UserDataType{
 
 export type EncodedTokenType = {
     value: string,
-    userId: mongoose.Schema.Types.ObjectId
+    userId: mongoose.Types.ObjectId
     remainingRate: number
 }
 

@@ -6,9 +6,12 @@ import cors from "cors"
 import { UserDataType, UserDataWithMongoExtrasInterface } from "./user"
 import { ResponseType } from "./responses"
 import jwt, { Secret } from "jsonwebtoken"
-import e from "express"
 import { EncodedTokenWithMongoExtrasInterface } from "./token"
 import { UserModelType } from "./mongoose/models"
+import { throwing } from "./errors/throwing"
+import { findUser } from "./database/user"
+import { findToken } from "./database/token"
+import mongoose from "mongoose"
 
 dotenv.config()
 
@@ -22,7 +25,7 @@ app.use(cors({origin: "*"}))
 
 const [UserModel, TokenModel]: ModelTypes = dbConnection()
 
-app.post("/api/token", async (req: Request, res: Response): Promise<Response<ResponseType>> => {
+app.post("/api/token", (req: Request, res: Response): Response<ResponseType> => {
     const response: ResponseType = {
         status: 200,
         message: ""
@@ -33,37 +36,43 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
             const userData: UserDataType = {
                 email: email
             }
-            const user = await UserModel.findOne(userData)
+            const user: Promise<UserDataWithMongoExtrasInterface | null> = findUser(UserModel, userData)
+            let id: mongoose.Types.ObjectId = new mongoose.Types.ObjectId()
+            console.log(id)
+            // const user: Promise<UserDataWithMongoExtrasInterface | null> = findUser(UserModel, userData).then(result => result)
             if(user){
-                const userToken: EncodedTokenWithMongoExtrasInterface | null = await TokenModel.findOne({
-                    userId: user._id
+                user.then(res => res && (() => {id = res._id}))
+                console.log(id)
+                const userToken: Promise<EncodedTokenWithMongoExtrasInterface | null> = findToken(TokenModel, {
+                    userId: id
                 })
-                response.message = "You're already authenticated. Try justifying some texts."
-                userToken 
-                ? response.token = userToken.value 
-                : () => {throw new Error("An error occured while treating your token")}
+                // response.message = "You're already authenticated. Try justifying some texts."
+                // userToken 
+                // ? response.token = userToken.value 
+                // : throwing("An error occured while treating your token")
                 return res.json(response)
             }
-            else{
-                await (UserModel as UserModelType).insertOne(userData)
-                console.log(userData)
-                const insertedUser: UserDataWithMongoExtrasInterface | null = await UserModel.findOne(userData)
-                console.log(insertedUser)
-                if(insertedUser) {
-                    const token: string = jwt.sign(userData, (process.env.JWT_SECRET) as Secret)
-                    response.message = "You're a brand new user. A token have been generated for you."
-                    response.token = token
-                    await TokenModel.insertOne({
-                        value: token,
-                        userId: insertedUser._id,
-                        remainingRate: 80000
-                    })
-                    return res.json(response)
-                }
-                else{
-                    throw new Error("An error occured while treating your data")
-                }
-            }
+            return res.json(response)
+            // else{
+            //     await UserModel.insertOne(userData)
+            //     console.log(userData)
+            //     const insertedUser: UserDataWithMongoExtrasInterface | null = await UserModel.findOne(userData)
+            //     console.log(insertedUser)
+            //     if(insertedUser) {
+            //         const token: string = jwt.sign(userData, (process.env.JWT_SECRET) as Secret)
+            //         response.message = "You're a brand new user. A token have been generated for you."
+            //         response.token = token
+            //         await TokenModel.insertOne({
+            //             value: token,
+            //             userId: insertedUser._id,
+            //             remainingRate: 80000
+            //         })
+            //         return res.json(response)
+            //     }
+            //     else{
+            //         throwing("An error occured while treating your data")
+            //     }
+            // }
         }
         else{
             response.status = 401
