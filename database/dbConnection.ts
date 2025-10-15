@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
-import { UserSchemaType } from "../types/mongoose/schemas";
-import { UserModelType } from "../types/mongoose/models";
+import { TokenSchemaType, UserSchemaType } from "../types/mongoose/schemas";
+import { TokenModelType, UserModelType } from "../types/mongoose/models";
+import { ModelTypes } from "./mongoose/mongoose";
 
 const UserSchema: UserSchemaType = new mongoose.Schema()
 
-export function dbConnection(): UserModelType{
+const TokenSchema: TokenSchemaType = new mongoose.Schema()
+
+export function dbConnection(): ModelTypes{
     const dbUri: string = `mongodb+srv://${process.env.MONGO_DB_USER}:${process.env.MONGO_DB_PASSWORD}@cluster0.xng7q05.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
     mongoose.connect(dbUri, {
@@ -13,5 +16,7 @@ export function dbConnection(): UserModelType{
 
     const UserModel: UserModelType = mongoose.model('User', UserSchema)
 
-    return UserModel
+    const TokenModel: TokenModelType = mongoose.model('Token', TokenSchema)
+
+    return [UserModel, TokenModel]
 }
