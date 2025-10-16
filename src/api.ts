@@ -9,6 +9,8 @@ import jwt, { Secret } from "jsonwebtoken"
 import e from "express"
 import { EncodedTokenWithMongoExtrasInterface } from "./token"
 import { UserModelType } from "./mongoose/models"
+import { TextRequestType } from "./text"
+import { justify } from "./justification/justify"
 
 dotenv.config()
 
@@ -21,12 +23,26 @@ app.use(express.json())
 app.use(cors({origin: "*"}))
 
 const [UserModel, TokenModel]: ModelTypes = dbConnection()
+    
+const response: ResponseType = {
+    status: 200,
+    message: ""
+}
+
+app.post("/api/justify", (req: Request, res: Response): Response<ResponseType> => {
+    try {
+        const { text }: TextRequestType = req.body
+        // console.log(text)
+        console.log(justify(text))
+        return res.json({
+            justifiedText: justify(text)
+        })
+    } catch (error) {   
+        return res.json({error: (error as Error).message})
+    }
+}) 
 
 app.post("/api/token", async (req: Request, res: Response): Promise<Response<ResponseType>> => {
-    const response: ResponseType = {
-        status: 200,
-        message: ""
-    }
     try{
         const { email }: UserDataType = req.body
         if(email){
