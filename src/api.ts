@@ -28,14 +28,11 @@ const response: ResponseType = {
     message: ""
 }
 
-app.post("/api/justify", (req: Request, res: Response): Response<ResponseType> => {
+app.post("/api/justify", (req: Request, res: Response): Response<string> => {
     try {
         const { text }: TextRequestType = req.body
-        // console.log(text)
-        console.log(justify(text))
-        return res.json({
-            justifiedText: justify(text)
-        })
+        const [justifiedText, usedRate] = justify(text)
+        return res.header("Content-Type", "text/plain").send(justifiedText)
     } catch (error) {   
         return res.json({error: (error as Error).message})
     }
