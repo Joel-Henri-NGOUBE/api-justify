@@ -14,12 +14,12 @@ import { throwing } from "./errors/throwing"
 import { writeJsonResponse } from "./responses/jsonResponse"
 import { getEpochOfTheLastMomentOfTheDay } from "./date"
 import { findIfIsAuthorized } from "./authorization"
+import { generateToken } from "./token/generate"
+import { DAILY_RATE_LIMIT, INTERNAL_SERVER_ERROR_STATUS_CODE, JWT_SECRET, OK_STATUS_CODE, PAYMENT_REQUIRED_STATUS_CODE, SERVER_PORT, UNAUTHORIZED_STATUS_CODE } from "./constants"
 
 dotenv.config()
 
 const app: Express = express()
-
-const port: number = 3501
 
 app.use(express.json())
 
@@ -30,39 +30,52 @@ const [UserModel, TokenModel]: ModelTypes = dbConnection()
 
 app.post("/api/justify", findIfIsAuthorized, async (req: Request, res: Response): Promise<Response<string | ResponseType>> => {
     const response: ResponseType = {
-        status: 200,
+        status: OK_STATUS_CODE,
         message: ""
     }
 
     try {
-        // In order to retrieve the token
-        const authorization = req.headers.authorization
-        // Get the token part of the authorization header
-        const token: string = (authorization as string).split(" ")[1]
+        // Retrieve the token of the header treated in the middleware
+        const token = res.locals.token as string
+
         const { text }: TextRequestType = req.body
 
         // Get the justified text and the number of words used
         const [justifiedText, usedRate] = justify(text)
 
         // Get the token value to see if it's a good one
-        const jwtData: JwtPayload | string = jwt.verify(token, (process.env.JWT_SECRET as Secret))
-        // Get the user
+        const jwtData: JwtPayload | string = (res.locals.tokenData as JwtPayload | string)
+
+        // Get the requesting user
         const user = await UserModel.findOne({email: (jwtData as UserDataType).email})
 
-        const insertedToken: EncodedTokenWithMongoExtrasInterface | null = await TokenModel.findOne({userId: (user as UserDataWithMongoExtrasInterface)._id})
+        const insertedToken: EncodedTokenWithMongoExtrasInterface | null = await TokenModel.findOne(
+            {
+                userId: (user as UserDataWithMongoExtrasInterface)._id
+            }
+        )
 
         // In case the secret is found
         if(token !== insertedToken?.value){
-            return res.status(401)
-            .json(writeJsonResponse(response, 401, "The token you're using is neither your own nor associated to you"))
+
+            return res.status(UNAUTHORIZED_STATUS_CODE)
+
+            .json(writeJsonResponse(response, 
+                UNAUTHORIZED_STATUS_CODE, 
+                "The token you're using is neither your own nor associated to you"
+            ))
         }
 
         const remainingRate = insertedToken.remainingRate - usedRate
 
         // To deny further justifications when the rate limit is reached
         if(remainingRate < 0){
-            return res.status(402)
-            .json(writeJsonResponse(response, 402, "You've reached the daily limit of text justifications. Get one of our paying offers"))
+            return res.status(PAYMENT_REQUIRED_STATUS_CODE)
+            .json(writeJsonResponse(
+                response, 
+                PAYMENT_REQUIRED_STATUS_CODE, 
+                "You've reached the daily limit of text justifications. Get one of our paying offers"
+            ))
         }
 
         await TokenModel.updateOne(
@@ -75,7 +88,8 @@ app.post("/api/justify", findIfIsAuthorized, async (req: Request, res: Response)
                 }
             }
         )
-        return res.header("Content-Type", "text/plain").send(justifiedText)
+        return res.header("Content-Type", "text/plain")
+        .send(justifiedText)
     } catch (error) {   
         return res.json({error: (error as Error).message})
     }
@@ -83,7 +97,7 @@ app.post("/api/justify", findIfIsAuthorized, async (req: Request, res: Response)
 
 app.post("/api/token", async (req: Request, res: Response): Promise<Response<ResponseType>> => {
     const response: ResponseType = {
-        status: 200,
+        status: OK_STATUS_CODE,
         message: ""
     }
 
@@ -94,7 +108,7 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                 email: email
             }
 
-            const user = await UserModel.findOne(userData)
+            const user: UserDataWithMongoExtrasInterface | null = await UserModel.findOne(userData)
 
             if(user){
                 // Getting the token of the requesting user
@@ -102,13 +116,57 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                     userId: user._id
                 })
 
-                response.message = "You're already authenticated. Try justifying some texts."
+                if(userToken){
+                    let jsonResponse: ResponseType = writeJsonResponse(response, 
+                        OK_STATUS_CODE, 
+                        "You're already authenticated. Try justifying some texts.", 
+                        userToken.value, 
+                        userToken.remainingRate
+                    )
 
-                userToken 
-                ? response.token = userToken.value 
-                : throwing("An error occured while treating your token")
+                    jwt.verify(userToken.value, JWT_SECRET as Secret, async (error, decoded) => {
+                        if(error){
+                            if(error.name === "TokenExpiredError"){
 
-                return res.json(response)
+                                const newToken: string = generateToken(userData)
+                                response.token && delete response["token"]
+
+                                jsonResponse = writeJsonResponse(response, 
+                                    OK_STATUS_CODE, 
+                                    "You're token has expired. A new token have been generated for you", newToken
+                                )
+
+                                await TokenModel.updateOne(
+                                    {
+                                        "_id": userToken._id
+                                    },
+                                    {
+                                        "$set": {
+                                            "value": newToken
+                                        }
+                                    }
+                                )
+                            }else{
+                                jsonResponse = writeJsonResponse(response, 
+                                    UNAUTHORIZED_STATUS_CODE, 
+                                    error.message)
+                                res.status(UNAUTHORIZED_STATUS_CODE)
+                            }
+                        }
+                    })
+                    return res.json(jsonResponse)
+                }
+                else{
+                    const jsonResponse: ResponseType = writeJsonResponse(response, 
+                        UNAUTHORIZED_STATUS_CODE, 
+                        "An error occured while treating your token")
+
+                    throwing("An error occured while treating your token")
+
+                    return res.status(UNAUTHORIZED_STATUS_CODE)
+                    .json(jsonResponse)
+                }
+
             }
             else{
                 await UserModel.insertOne(userData)
@@ -116,18 +174,15 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                 const insertedUser: UserDataWithMongoExtrasInterface | null = await UserModel.findOne(userData)
 
                 if(insertedUser) {
-                    // Setting the data that'll be stored in the token
-                    const tokenData: TokenDataInterface = {...userData, exp: getEpochOfTheLastMomentOfTheDay(), iat: Date.now()}
+                    const newToken: string = generateToken(userData)
 
-                    const token: string = jwt.sign(tokenData, (process.env.JWT_SECRET) as Secret)
-
-                    const jsonResponse = writeJsonResponse(response, 200, "You're a brand new user. A token have been generated for you.", token)
+                    const jsonResponse = writeJsonResponse(response, OK_STATUS_CODE, "You're a brand new user. A token have been generated for you.", newToken)
 
                     // Insert the token in the database
                     await TokenModel.insertOne({
-                        value: token,
+                        value: newToken,
                         userId: insertedUser._id,
-                        remainingRate: 80000
+                        remainingRate: DAILY_RATE_LIMIT
                     })
 
                     return res.json(jsonResponse)
@@ -137,23 +192,23 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                     const error = "An error occured while treating your data"
                     throwing(error)
 
-                    return res.status(500)
-                    .json(writeJsonResponse(response, 500, error))
+                    return res.status(INTERNAL_SERVER_ERROR_STATUS_CODE)
+                    .json(writeJsonResponse(response, INTERNAL_SERVER_ERROR_STATUS_CODE, error))
                 }
             }
         }
         else{
-            return res.status(401)
-            .json(writeJsonResponse(response, 401, "Your credentials are not in a valid format"))  
+            return res.status(UNAUTHORIZED_STATUS_CODE)
+            .json(writeJsonResponse(response, UNAUTHORIZED_STATUS_CODE, "Your credentials are not in a valid format"))  
         }
     }
     catch(error){
-        return res.status(500)
-        .json(writeJsonResponse(response, 500, (error as Error).message))
+        return res.status(INTERNAL_SERVER_ERROR_STATUS_CODE)
+        .json(writeJsonResponse(response, INTERNAL_SERVER_ERROR_STATUS_CODE, (error as Error).message))
         
     }
 })
 
-app.listen(port, () => {
-    console.log(`The app is running on port ${port}`)
+app.listen(SERVER_PORT, () => {
+    console.log(`The app is running on port ${SERVER_PORT}`)
 })

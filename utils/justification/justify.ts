@@ -1,10 +1,12 @@
+import { DEFAULT_WORDS_PER_LINE_NUMBER } from "../constants"
+
 /**
  * Gets any text justified
  * @param text The text to justify
  * @param wordsPerLine The limit of words per line wanted for the justification
  * @returns The justification of the text
  */
-export function justify(text: string, wordsPerLine: number = 80): [string, number]{
+export function justify(text: string, wordsPerLine: number = DEFAULT_WORDS_PER_LINE_NUMBER): [string, number]{
     // Setting each word apart in an array
     try{
         const words: Array<string> = text.split(" ")

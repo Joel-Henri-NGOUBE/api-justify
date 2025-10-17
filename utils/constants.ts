@@ -1,0 +1,10 @@
+export const OK_STATUS_CODE = 200
+export const UNAUTHORIZED_STATUS_CODE = 401
+export const PAYMENT_REQUIRED_STATUS_CODE = 402
+export const INTERNAL_SERVER_ERROR_STATUS_CODE = 500
+export const SERVER_PORT = 3501
+export const DAILY_RATE_LIMIT = 80000
+export const DEFAULT_WORDS_PER_LINE_NUMBER = 80
+export const MONGO_DB_USER = process.env.MONGO_DB_USER
+export const MONGO_DB_PASSWORD = process.env.MONGO_DB_PASSWORD
+export const JWT_SECRET = process.env.JWT_SECRET
