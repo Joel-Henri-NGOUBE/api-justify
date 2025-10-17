@@ -131,7 +131,8 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
 
                                 jsonResponse = writeJsonResponse(response, 
                                     OK_STATUS_CODE, 
-                                    "You're token has expired. A new token have been generated for you", newToken
+                                    "You're token has expired. A new token have been generated for you", 
+                                    newToken
                                 )
 
                                 await TokenModel.updateOne(
