@@ -3,8 +3,8 @@ import { UserDataType } from "./user";
 import { MongoExtras } from "./mongoose/mongoose";
 
 export interface TokenDataInterface extends UserDataType{
-    exp: string,
-    iat: string
+    exp: number,
+    iat: number
 }
 
 export type EncodedTokenType = {

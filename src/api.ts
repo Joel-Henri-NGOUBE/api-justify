@@ -6,10 +6,13 @@ import cors from "cors"
 import { UserDataType, UserDataWithMongoExtrasInterface } from "./user"
 import { ResponseType } from "./responses"
 import jwt, { Secret } from "jsonwebtoken"
-import { EncodedTokenWithMongoExtrasInterface } from "./token"
+import { EncodedTokenWithMongoExtrasInterface, TokenDataInterface } from "./token"
 import { UserModelType } from "./mongoose/models"
 import { TextRequestType } from "./text"
 import { justify } from "./justification/justify"
+import { throwing } from "./errors/throwing"
+import { writeJsonResponse } from "./responses"
+import { getEpochOfTheLastMomentOfTheDay } from "./date"
 
 dotenv.config()
 
@@ -28,10 +31,17 @@ const response: ResponseType = {
     message: ""
 }
 
-app.post("/api/justify", (req: Request, res: Response): Response<string> => {
+app.post("/api/justify", async (req: Request, res: Response): Promise<Response<string>> => {
     try {
+        const authorization = req.headers.authorization
+        if(!authorization){
+            const jsonResponse = writeJsonResponse(response, 401, "You do not have any token to permit you to justify your text")
+            return res.json(jsonResponse)
+        }
+        const token: string = authorization.split(" ")[1]
         const { text }: TextRequestType = req.body
         const [justifiedText, usedRate] = justify(text)
+        const user = await UserModel.findOne(userData)
         return res.header("Content-Type", "text/plain").send(justifiedText)
     } catch (error) {   
         return res.json({error: (error as Error).message})
@@ -53,16 +63,17 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                 response.message = "You're already authenticated. Try justifying some texts."
                 userToken 
                 ? response.token = userToken.value 
-                : () => {throw new Error("An error occured while treating your token")}
+                : throwing("An error occured while treating your token")
                 return res.json(response)
             }
             else{
-                await (UserModel as UserModelType).insertOne(userData)
+                await UserModel.insertOne(userData)
                 console.log(userData)
                 const insertedUser: UserDataWithMongoExtrasInterface | null = await UserModel.findOne(userData)
                 console.log(insertedUser)
                 if(insertedUser) {
-                    const token: string = jwt.sign(userData, (process.env.JWT_SECRET) as Secret)
+                    const tokenData: TokenDataInterface = {...userData, exp: getEpochOfTheLastMomentOfTheDay()}
+                    const token: string = jwt.sign(tokenData, (process.env.JWT_SECRET) as Secret)
                     response.message = "You're a brand new user. A token have been generated for you."
                     response.token = token
                     await TokenModel.insertOne({
@@ -73,7 +84,7 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                     return res.json(response)
                 }
                 else{
-                    throw new Error("An error occured while treating your data")
+                    throwing("An error occured while treating your data")
                 }
             }
         }
