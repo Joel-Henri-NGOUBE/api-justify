@@ -13,12 +13,18 @@ export function justify(text: string, wordsPerLine: number = 80): [string, numbe
         let lastSameLineWordIndex: number = 0
         let currentCharCount: number = 0
         let lines: Array<string> = []
+        const lastWordIndex = wordsNumber - 1
+        let hasLastIndexReachedElseBlock: boolean = false
         for(let i = 0; i < wordsNumber; i++){
-            if(currentCharCount + words[i].length + 1 <= wordsPerLine){
+            if(currentCharCount + words[i].length + 1 <= wordsPerLine && i !== lastWordIndex){
                 // The current count of characters on the line is incremented with the following word number of chars and with 1 for the space that will follow the char
                 currentCharCount += words[i].length + 1
                 lastSameLineWordIndex = i
             }else{
+                if(i === lastWordIndex && currentCharCount + words[i].length + 1 <= wordsPerLine){
+                    currentCharCount += words[i].length + 1
+                    lastSameLineWordIndex = lastWordIndex
+                }
                 // To remove the additional space
                 currentCharCount -= 1
                 // Getting all the words of the current line
@@ -35,7 +41,7 @@ export function justify(text: string, wordsPerLine: number = 80): [string, numbe
                 const currentNumberOfSpacesAdded: number = subWordsOfCurrentLineLastIndex
                 let wordsWithAdditionnalSpaces: Array<string> = wordsWithMandatorySpaces
                 while(spacesToInsert > 0){
-                    // To know if we must add space after each non-last word or just some
+                    // To know if we must add space after each non-last word or just some (They are added from the left to the right)
                     const areSpacesMoreNumerousThanWordsInCurrentLine: boolean = spacesToInsert > currentNumberOfSpacesAdded
                     wordsWithAdditionnalSpaces = wordsWithAdditionnalSpaces.map((word, index) => 
                         (areSpacesMoreNumerousThanWordsInCurrentLine && (index !== subWordsOfCurrentLineLastIndex)) 
@@ -52,7 +58,7 @@ export function justify(text: string, wordsPerLine: number = 80): [string, numbe
                 // To permit the next iteration to start the line with the word that follows the last one on the previous iteration (which is actually this iteration)
                 firstSameLineWordIndex = i + 1
                 // As we must count the characters in the next line (in the next iteration)
-                currentCharCount = 0
+                currentCharCount = 0       
             }     
         }
         // To trigger a line break after each line and get all the justified text
