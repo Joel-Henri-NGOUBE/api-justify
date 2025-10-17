@@ -1,7 +1,7 @@
 import jwt, { Secret } from "jsonwebtoken";
 import { getEpochOfTheLastMomentOfTheDay } from "../date";
-import { TokenDataInterface } from ".";
-import { UserDataType } from "../user";
+import { UserDataType } from "../../user";
+import { TokenDataInterface } from "../../token";
 
 export function generateToken(userData: UserDataType): string{
     // Setting the data that'll be stored in the token

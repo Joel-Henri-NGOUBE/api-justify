@@ -1,21 +1,19 @@
 import express, { Request, Response, Express } from "express"
 import dotenv from "dotenv"
-import { dbConnection } from "../database/dbConnection"
 import { ModelTypes } from "./mongoose/mongoose"
 import cors from "cors"
 import { UserDataType, UserDataWithMongoExtrasInterface } from "./user"
 import { ResponseType } from "./responses"
 import jwt, { JwtPayload, Secret } from "jsonwebtoken"
-import { EncodedTokenWithMongoExtrasInterface, TokenDataInterface } from "./token"
-import { UserModelType } from "./mongoose/models"
+import { EncodedTokenWithMongoExtrasInterface } from "./token"
 import { TextRequestType } from "./text"
-import { justify } from "./justification/justify"
-import { throwing } from "./errors/throwing"
-import { writeJsonResponse } from "./responses/jsonResponse"
-import { getEpochOfTheLastMomentOfTheDay } from "./date"
-import { findIfIsAuthorized } from "./authorization"
-import { generateToken } from "./token/generate"
-import { DAILY_RATE_LIMIT, INTERNAL_SERVER_ERROR_STATUS_CODE, JWT_SECRET, OK_STATUS_CODE, PAYMENT_REQUIRED_STATUS_CODE, SERVER_PORT, UNAUTHORIZED_STATUS_CODE } from "./constants"
+import { writeJsonResponse } from "./utils/responses/jsonResponse"
+import { generateToken } from "./utils/token/generate"
+import { DAILY_RATE_LIMIT, INTERNAL_SERVER_ERROR_STATUS_CODE, OK_STATUS_CODE, PAYMENT_REQUIRED_STATUS_CODE, SERVER_PORT, UNAUTHORIZED_STATUS_CODE } from "./utils/constants"
+import { dbConnection } from "./database/dbConnection"
+import { findIfIsAuthorized } from "./middlewares/authorization"
+import { justify } from "./utils/justification/justify"
+import { throwing } from "./utils/errors/throwing"
 
 dotenv.config()
 
@@ -124,7 +122,7 @@ app.post("/api/token", async (req: Request, res: Response): Promise<Response<Res
                         userToken.remainingRate
                     )
 
-                    jwt.verify(userToken.value, JWT_SECRET as Secret, async (error, decoded) => {
+                    jwt.verify(userToken.value, process.env.JWT_SECRET as Secret, async (error) => {
                         if(error){
                             if(error.name === "TokenExpiredError"){
 

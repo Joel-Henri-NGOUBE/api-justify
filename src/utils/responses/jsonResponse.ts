@@ -1,4 +1,5 @@
-import { ResponseType } from "."
+
+import { ResponseType } from "../../responses"
 import { OK_STATUS_CODE } from "../constants"
 /**
  * Builds up an object that can be used in the routes responses

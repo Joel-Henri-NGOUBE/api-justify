@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import { writeJsonResponse } from "./responses/jsonResponse";
-import { ResponseType } from "./responses";
-import jwt, { JwtPayload, Secret } from "jsonwebtoken";
-import { OK_STATUS_CODE, UNAUTHORIZED_STATUS_CODE } from "./constants";
+import jwt, { Secret } from "jsonwebtoken";
+import { OK_STATUS_CODE, UNAUTHORIZED_STATUS_CODE } from "../utils/constants";
+import { ResponseType } from "../responses";
+import { writeJsonResponse } from "../utils/responses/jsonResponse";
 
 export function findIfIsAuthorized(req: Request, res: Response, next: NextFunction): void | Response<ResponseType>{
     // In order to retrieve the token
@@ -30,7 +30,6 @@ export function findIfIsAuthorized(req: Request, res: Response, next: NextFuncti
         res.locals.tokenData = decoded
         res.locals.token = token
     }) 
-
 
     next()
 }
