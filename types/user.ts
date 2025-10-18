@@ -1,4 +1,3 @@
-import mongoose from "mongoose"
 import { MongoExtras } from "./mongoose/mongoose"
 
 export type UserDataType = {

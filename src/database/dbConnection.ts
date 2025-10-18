@@ -3,7 +3,10 @@ import { ModelTypes } from "../mongoose/mongoose";
 import { TokenSchemaType, UserSchemaType } from "../mongoose/schemas";
 import { TokenModelType, UserModelType } from "../mongoose/models";
 
-
+/**
+ * Initiates the connection to the MongoDB database
+ * @returns The models of the application in an array
+ */
 export function dbConnection(): ModelTypes{
     const dbUri: string = `mongodb+srv://${process.env.MONGO_DB_USER}:${process.env.MONGO_DB_PASSWORD}@cluster0.xng7q05.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
     mongoose.connect(dbUri, {
